@@ -1246,64 +1246,21 @@ function clearCurrentSession() {
 ========================================================= */
 
 async function init() {
+    log("🔥 MOTIFY iniciado");
+    console.log("🎵 Scopes:", SCOPES);
 
-    log(
-        "🔥 MOTIFY iniciado"
-    );
-
-
-    console.log(
-        "🎵 Scopes:",
-        SCOPES
-    );
-
-
-    console.log(
-        "🌐 Entorno:",
-        IS_ONLINE
-            ? "MOTIFY ONLINE"
-            : "MOTIFY LOCAL"
-    );
-
-
-    console.log(
-        "🔗 Redirect:",
-        REDIRECT_URI
-    );
-
-
-    /* ================================================
-       CALLBACK
-    ================================================= */
-
-    const params =
-        new URLSearchParams(
-            window.location.search
-        );
-
+    const params = new URLSearchParams(window.location.search);
 
     if (params.has("code")) {
-
         await handleSpotifyCallback();
-
         return;
     }
 
+    // No reutilizar automáticamente una sesión anterior
+    sessionStorage.removeItem("motify_access_token");
+    sessionStorage.removeItem("motify_token_expiration");
 
-    /* ================================================
-       SESIÓN GUARDADA
-    ================================================= */
-
-    // No reutilizar automáticamente una sesión anterior.
-// El usuario debe pulsar "CONECTAR CON SPOTIFY".
-sessionStorage.removeItem("motify_access_token");
-sessionStorage.removeItem("motify_token_expiration");
-
-log("⚪ Esperando conexión con Spotify...");
-
-/* =========================================================
-   ARRANCAR
-========================================================= */
-
+    log("⚪ Esperando conexión con Spotify...");
+}
 init();
 ```
