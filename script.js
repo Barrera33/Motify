@@ -1,10 +1,9 @@
-   ```javascript
+```javascript
 /* =========================================================
    MOTIFY
    Spotify Web Playback Controller
-   PORTABLE VERSION
+   Versión portátil - GitHub Pages
 ========================================================= */
-
 
 /* =========================================================
    CONFIGURACIÓN
@@ -12,28 +11,7 @@
 
 const CLIENT_ID = "c855b0a480d74d278a35821ad46ed5c8";
 
-/*
-   MOTIFY detecta automáticamente dónde está funcionando.
-   Local:
-   http://127.0.0.1:5500
-
-   Online:
-   https://barrera33.github.io/Motify/
-*/
-
-const LOCAL_REDIRECT_URI = "http://127.0.0.1:5500";
-const ONLINE_REDIRECT_URI = "https://barrera33.github.io/Motify/";
-
-const IS_ONLINE = window.location.hostname === "barrera33.github.io";
-
-const REDIRECT_URI = IS_ONLINE
-    ? ONLINE_REDIRECT_URI
-    : LOCAL_REDIRECT_URI;
-
-
-/* =========================================================
-   SCOPES
-========================================================= */
+const REDIRECT_URI = "https://barrera33.github.io/Motify/";
 
 const SCOPES = [
     "streaming",
@@ -45,26 +23,6 @@ const SCOPES = [
 
 
 /* =========================================================
-   STORAGE
-========================================================= */
-
-/*
-   Usamos nombres diferentes para la versión local y online.
-
-   Esto evita que una sesión de una versión interfiera
-   con la otra.
-*/
-
-const STORAGE_PREFIX = IS_ONLINE
-    ? "motify_online_"
-    : "motify_local_";
-
-const TOKEN_KEY = STORAGE_PREFIX + "access_token";
-const EXPIRATION_KEY = STORAGE_PREFIX + "token_expiration";
-const VERIFIER_KEY = STORAGE_PREFIX + "code_verifier";
-
-
-/* =========================================================
    VARIABLES
 ========================================================= */
 
@@ -72,7 +30,6 @@ let accessToken = null;
 let player = null;
 let deviceId = null;
 let currentState = null;
-
 let spotifySDKReady = false;
 let playerInitializing = false;
 
@@ -114,11 +71,13 @@ const clearConsole = document.getElementById("clearConsole");
 ========================================================= */
 
 function log(message, type = "") {
+
     console.log(message);
 
     if (!systemConsole) return;
 
     const p = document.createElement("p");
+
     p.textContent = message;
 
     if (type) {
@@ -126,18 +85,9 @@ function log(message, type = "") {
     }
 
     systemConsole.appendChild(p);
+
     systemConsole.scrollTop = systemConsole.scrollHeight;
 }
-
-
-/* =========================================================
-   INFORMACIÓN DEL ENTORNO
-========================================================= */
-
-console.log("🔥 MOTIFY iniciado");
-console.log("🌐 Host:", window.location.hostname);
-console.log("🔗 Redirect URI:", REDIRECT_URI);
-console.log("📦 Storage:", STORAGE_PREFIX);
 
 
 /* =========================================================
@@ -145,12 +95,16 @@ console.log("📦 Storage:", STORAGE_PREFIX);
 ========================================================= */
 
 function randomString(length = 64) {
+
     const chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+        "abcdefghijklmnopqrstuvwxyz" +
+        "0123456789-._~";
 
     let result = "";
 
     const array = new Uint8Array(length);
+
     crypto.getRandomValues(array);
 
     for (let i = 0; i < length; i++) {
@@ -162,16 +116,24 @@ function randomString(length = 64) {
 
 
 async function sha256(plain) {
+
     const encoder = new TextEncoder();
+
     const data = encoder.encode(plain);
 
-    return window.crypto.subtle.digest("SHA-256", data);
+    return window.crypto.subtle.digest(
+        "SHA-256",
+        data
+    );
 }
 
 
 function base64urlencode(arrayBuffer) {
+
     return btoa(
-        String.fromCharCode(...new Uint8Array(arrayBuffer))
+        String.fromCharCode(
+            ...new Uint8Array(arrayBuffer)
+        )
     )
         .replace(/\+/g, "-")
         .replace(/\//g, "_")
@@ -184,53 +146,98 @@ function base64urlencode(arrayBuffer) {
 ========================================================= */
 
 if (connectButton) {
-    connectButton.addEventListener("click", startSpotifyLogin);
+
+    connectButton.addEventListener(
+        "click",
+        startSpotifyLogin
+    );
+
 }
 
 
 async function startSpotifyLogin() {
+
     try {
+
         log("🔐 Preparando conexión con Spotify...");
 
-        console.log("🌐 Entorno:", IS_ONLINE ? "ONLINE" : "LOCAL");
-        console.log("🔗 Redirect URI:", REDIRECT_URI);
+        /*
+           Limpiamos únicamente las credenciales anteriores.
+           Esto evita que otro computador reutilice una sesión
+           vieja.
+        */
+
+        sessionStorage.removeItem(
+            "motify_access_token"
+        );
+
+        sessionStorage.removeItem(
+            "motify_token_expiration"
+        );
+
+        sessionStorage.removeItem(
+            "motify_code_verifier"
+        );
+
 
         const verifier = randomString(64);
 
         const hashed = await sha256(verifier);
+
         const challenge = base64urlencode(hashed);
 
-        /*
-           Guardamos el verifier solamente en la sesión
-           de este entorno.
-        */
 
-        sessionStorage.setItem(VERIFIER_KEY, verifier);
+        sessionStorage.setItem(
+            "motify_code_verifier",
+            verifier
+        );
+
 
         const params = new URLSearchParams({
-             response_type: "code",
-             client_id: CLIENT_ID,
-             scope: SCOPES,
-             redirect_uri: REDIRECT_URI,
-             code_challenge_method: "S256",
-             code_challenge: challenge,
-             show_dialog: "true"
-         });
+
+            response_type: "code",
+
+            client_id: CLIENT_ID,
+
+            scope: SCOPES,
+
+            redirect_uri: REDIRECT_URI,
+
+            code_challenge_method: "S256",
+
+            code_challenge: challenge,
+
+            /*
+               Obliga a Spotify a mostrar el diálogo
+               de autorización.
+            */
+
+            show_dialog: "true"
+
+        });
+
 
         const authURL =
             "https://accounts.spotify.com/authorize?" +
             params.toString();
 
-        console.log("🚀 Spotify Auth URL:", authURL);
+
+        log("🚀 Abriendo autorización de Spotify...");
+
 
         window.location.href = authURL;
 
+
     } catch (error) {
+
         log(
-            "❌ Error iniciando Spotify: " + error.message,
+            "❌ Error iniciando Spotify: " +
+            error.message,
             "error"
         );
+
     }
+
 }
 
 
@@ -240,42 +247,46 @@ async function startSpotifyLogin() {
 
 async function handleSpotifyCallback() {
 
-    const params = new URLSearchParams(
-        window.location.search
-    );
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
 
     const code = params.get("code");
+
     const error = params.get("error");
 
+
     if (error) {
+
         log(
-            "❌ Spotify rechazó la conexión: " + error,
+            "❌ Spotify rechazó la conexión: " +
+            error,
             "error"
         );
 
         return false;
     }
+
 
     if (!code) {
         return false;
     }
 
+
     const verifier =
-        sessionStorage.getItem(VERIFIER_KEY);
+        sessionStorage.getItem(
+            "motify_code_verifier"
+        );
+
 
     if (!verifier) {
 
         log(
-            "❌ Falta el code verifier de esta sesión.",
+            "❌ Falta el code verifier.",
             "error"
         );
-
-        /*
-           Limpiamos solamente los datos de ESTE entorno.
-        */
-
-        sessionStorage.removeItem(TOKEN_KEY);
-        sessionStorage.removeItem(EXPIRATION_KEY);
 
         return false;
     }
@@ -285,12 +296,19 @@ async function handleSpotifyCallback() {
 
         log("🔄 Obteniendo token...");
 
+
         const body = new URLSearchParams({
+
             client_id: CLIENT_ID,
+
             grant_type: "authorization_code",
+
             code: code,
+
             redirect_uri: REDIRECT_URI,
+
             code_verifier: verifier
+
         });
 
 
@@ -309,34 +327,32 @@ async function handleSpotifyCallback() {
         );
 
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
 
         if (!response.ok) {
 
             throw new Error(
                 data.error_description ||
-                data.error ||
                 "No se pudo obtener el token."
             );
+
         }
 
 
-        accessToken = data.access_token;
+        accessToken =
+            data.access_token;
 
-
-        /*
-           Guardamos la sesión separada por entorno.
-        */
 
         sessionStorage.setItem(
-            TOKEN_KEY,
+            "motify_access_token",
             accessToken
         );
 
 
         sessionStorage.setItem(
-            EXPIRATION_KEY,
+            "motify_token_expiration",
             String(
                 Date.now() +
                 (data.expires_in * 1000)
@@ -344,17 +360,19 @@ async function handleSpotifyCallback() {
         );
 
 
-        sessionStorage.removeItem(VERIFIER_KEY);
+        sessionStorage.removeItem(
+            "motify_code_verifier"
+        );
 
 
         /*
-           Limpiamos ?code= de la URL.
+           Quitamos ?code= de la URL.
         */
 
         window.history.replaceState(
             {},
             document.title,
-            window.location.pathname
+            REDIRECT_URI
         );
 
 
@@ -366,7 +384,9 @@ async function handleSpotifyCallback() {
 
         showPlayer();
 
+
         waitForSDK();
+
 
         return true;
 
@@ -381,31 +401,29 @@ async function handleSpotifyCallback() {
 
         return false;
     }
+
 }
 
 
 /* =========================================================
-   MOSTRAR PLAYER
+   TOKEN
 ========================================================= */
 
-function showPlayer() {
+function tokenIsValid() {
 
-    if (loginSection) {
-        loginSection.classList.add("hidden");
+    if (!accessToken) {
+        return false;
     }
 
-    if (playerSection) {
-        playerSection.classList.remove("hidden");
-    }
 
-    if (connectionStatus) {
+    const expiration = Number(
+        sessionStorage.getItem(
+            "motify_token_expiration"
+        ) || 0
+    );
 
-        connectionStatus.textContent =
-            "🟡 CONECTANDO...";
 
-        connectionStatus.className =
-            "status connected";
-    }
+    return expiration > Date.now();
 }
 
 
@@ -434,6 +452,35 @@ function waitForSDK() {
         waitForSDK,
         500
     );
+
+}
+
+
+/* =========================================================
+   MOSTRAR PLAYER
+========================================================= */
+
+function showPlayer() {
+
+    if (loginSection) {
+        loginSection.classList.add("hidden");
+    }
+
+
+    if (playerSection) {
+        playerSection.classList.remove("hidden");
+    }
+
+
+    if (connectionStatus) {
+
+        connectionStatus.textContent =
+            "🟡 CONECTANDO...";
+
+        connectionStatus.className =
+            "status connected";
+    }
+
 }
 
 
@@ -482,9 +529,7 @@ function initializeSpotifyPlayer() {
     playerInitializing = true;
 
 
-    log(
-        "🎧 Creando MOTIFY..."
-    );
+    log("🎧 Creando MOTIFY...");
 
 
     player = new Spotify.Player({
@@ -494,14 +539,19 @@ function initializeSpotifyPlayer() {
         getOAuthToken: callback => {
 
             const token =
-                sessionStorage.getItem(TOKEN_KEY);
+                sessionStorage.getItem(
+                    "motify_access_token"
+                );
+
 
             if (token) {
                 callback(token);
             }
+
         },
 
         volume: 0.5
+
     });
 
 
@@ -515,10 +565,12 @@ function initializeSpotifyPlayer() {
 
             deviceId = device_id;
 
+
             console.log(
                 "🔥 MOTIFY READY",
                 deviceId
             );
+
 
             log(
                 "🔥 MOTIFY READY " +
@@ -547,6 +599,7 @@ function initializeSpotifyPlayer() {
                 playerReadyElement.classList.add(
                     "ready"
                 );
+
             }
 
 
@@ -557,6 +610,7 @@ function initializeSpotifyPlayer() {
 
                 connectionStatus.className =
                     "status connected";
+
             }
 
 
@@ -569,10 +623,12 @@ function initializeSpotifyPlayer() {
 
                 transferMessage.textContent =
                     "MOTIFY está listo para recibir Spotify.";
+
             }
 
 
             await waitForDeviceInSpotify();
+
         }
     );
 
@@ -608,40 +664,50 @@ function initializeSpotifyPlayer() {
                     playerReadyElement.classList.remove(
                         "ready"
                     );
+
                 }
 
 
                 if (transferButton) {
                     transferButton.disabled = true;
                 }
+
             }
+
         }
     );
 
 
     /* =====================================================
-       ESTADO DEL PLAYER
+       ESTADO DE REPRODUCCIÓN
     ===================================================== */
 
     player.addListener(
         "player_state_changed",
         state => {
 
-            if (!state) return;
+            if (!state) {
+                return;
+            }
+
 
             currentState = state;
 
 
             const track =
-                state.track_window.current_track;
+                state.track_window?.current_track;
 
 
-            if (!track) return;
+            if (!track) {
+                return;
+            }
 
 
             if (trackName) {
+
                 trackName.textContent =
                     track.name;
+
             }
 
 
@@ -650,9 +716,11 @@ function initializeSpotifyPlayer() {
                 artistName.textContent =
                     track.artists
                         .map(
-                            artist => artist.name
+                            artist =>
+                                artist.name
                         )
                         .join(", ");
+
             }
 
 
@@ -666,7 +734,9 @@ function initializeSpotifyPlayer() {
 
                     albumCover.innerHTML =
                         `<img src="${track.album.images[0].url}" alt="Album">`;
+
                 }
+
             }
 
 
@@ -676,7 +746,9 @@ function initializeSpotifyPlayer() {
                     state.paused
                         ? "▶"
                         : "⏸";
+
             }
+
         }
     );
 
@@ -694,6 +766,7 @@ function initializeSpotifyPlayer() {
                 message,
                 "error"
             );
+
         }
     );
 
@@ -707,6 +780,7 @@ function initializeSpotifyPlayer() {
                 message,
                 "error"
             );
+
         }
     );
 
@@ -720,6 +794,7 @@ function initializeSpotifyPlayer() {
                 message,
                 "error"
             );
+
         }
     );
 
@@ -733,12 +808,13 @@ function initializeSpotifyPlayer() {
                 message,
                 "error"
             );
+
         }
     );
 
 
     /* =====================================================
-       CONNECT
+       CONECTAR
     ===================================================== */
 
     player.connect()
@@ -757,13 +833,16 @@ function initializeSpotifyPlayer() {
                     "❌ No se pudo conectar MOTIFY.",
                     "error"
                 );
+
             }
+
         });
+
 }
 
 
 /* =========================================================
-   ESPERAR A QUE SPOTIFY VEA MOTIFY
+   BUSCAR MOTIFY EN SPOTIFY
 ========================================================= */
 
 async function waitForDeviceInSpotify(
@@ -775,7 +854,12 @@ async function waitForDeviceInSpotify(
     }
 
 
-    if (attempts >= 10) {
+    if (!accessToken) {
+        return false;
+    }
+
+
+    if (attempts >= 15) {
 
         log(
             "⚠️ MOTIFY tiene Device ID pero Spotify tardó en mostrarlo."
@@ -807,11 +891,22 @@ async function waitForDeviceInSpotify(
         if (response.status === 401) {
 
             log(
-                "❌ Token expirado.",
+                "❌ Token expirado. Vuelve a conectar Spotify.",
                 "error"
             );
 
-            clearCurrentSession();
+            clearSpotifySession();
+
+            return false;
+        }
+
+
+        if (!response.ok) {
+
+            log(
+                "⚠️ Spotify respondió " +
+                response.status
+            );
 
             return false;
         }
@@ -842,8 +937,10 @@ async function waitForDeviceInSpotify(
 
 
             if (deviceIdElement) {
+
                 deviceIdElement.textContent =
                     deviceId;
+
             }
 
 
@@ -851,6 +948,7 @@ async function waitForDeviceInSpotify(
 
                 deviceStateElement.textContent =
                     "VISIBLE EN SPOTIFY";
+
             }
 
 
@@ -876,10 +974,12 @@ async function waitForDeviceInSpotify(
 
                 transferMessage.textContent =
                     "MOTIFY está listo para transferir.";
+
             }
 
 
             return true;
+
         }
 
 
@@ -908,11 +1008,33 @@ async function waitForDeviceInSpotify(
 
         return false;
     }
+
 }
 
 
 /* =========================================================
-   TRANSFERIR
+   LIMPIAR SESIÓN
+========================================================= */
+
+function clearSpotifySession() {
+
+    accessToken = null;
+
+    deviceId = null;
+
+    sessionStorage.removeItem(
+        "motify_access_token"
+    );
+
+    sessionStorage.removeItem(
+        "motify_token_expiration"
+    );
+
+}
+
+
+/* =========================================================
+   TRANSFERIR A MOTIFY
 ========================================================= */
 
 if (transferButton) {
@@ -921,6 +1043,7 @@ if (transferButton) {
         "click",
         transferToMotify
     );
+
 }
 
 
@@ -948,13 +1071,16 @@ async function transferToMotify() {
     }
 
 
-    transferButton.disabled = true;
+    if (transferButton) {
+        transferButton.disabled = true;
+    }
 
 
     if (transferMessage) {
 
         transferMessage.textContent =
             "🚀 Transfiriendo a MOTIFY...";
+
     }
 
 
@@ -965,7 +1091,8 @@ async function transferToMotify() {
 
 
     log(
-        "🆔 Device: " + deviceId
+        "🆔 Device: " +
+        deviceId
     );
 
 
@@ -977,20 +1104,26 @@ async function transferToMotify() {
                 method: "PUT",
 
                 headers: {
+
                     Authorization:
                         "Bearer " +
                         accessToken,
 
                     "Content-Type":
                         "application/json"
+
                 },
 
                 body: JSON.stringify({
+
                     device_ids: [
                         deviceId
                     ],
+
                     play: true
+
                 })
+
             }
         );
 
@@ -1007,6 +1140,7 @@ async function transferToMotify() {
 
                 transferMessage.textContent =
                     "🟢 ¡Reproducción transferida a MOTIFY!";
+
             }
 
 
@@ -1014,6 +1148,7 @@ async function transferToMotify() {
 
                 deviceStateElement.textContent =
                     "REPRODUCIENDO";
+
             }
 
 
@@ -1022,9 +1157,26 @@ async function transferToMotify() {
                 connectionStatus.textContent =
                     "🟢 MOTIFY REPRODUCIENDO";
 
-                connectionStatus.className =
-                    "status connected";
             }
+
+
+        } else if (response.status === 401) {
+
+            log(
+                "❌ Token inválido o permisos insuficientes.",
+                "error"
+            );
+
+
+            if (transferMessage) {
+
+                transferMessage.textContent =
+                    "❌ Vuelve a conectar Spotify.";
+
+            }
+
+
+            clearSpotifySession();
 
 
         } else {
@@ -1046,7 +1198,9 @@ async function transferToMotify() {
 
                 transferMessage.textContent =
                     "❌ No se pudo transferir.";
+
             }
+
         }
 
 
@@ -1063,11 +1217,16 @@ async function transferToMotify() {
 
             transferMessage.textContent =
                 "❌ Error de conexión.";
+
         }
+
     }
 
 
-    transferButton.disabled = false;
+    if (transferButton) {
+        transferButton.disabled = false;
+    }
+
 }
 
 
@@ -1081,7 +1240,10 @@ if (playButton) {
         "click",
         async () => {
 
-            if (!player) return;
+            if (!player) {
+                return;
+            }
+
 
             try {
 
@@ -1094,9 +1256,12 @@ if (playButton) {
                     error.message,
                     "error"
                 );
+
             }
+
         }
     );
+
 }
 
 
@@ -1110,7 +1275,10 @@ if (nextButton) {
         "click",
         async () => {
 
-            if (!player) return;
+            if (!player) {
+                return;
+            }
+
 
             try {
 
@@ -1123,9 +1291,12 @@ if (nextButton) {
                     error.message,
                     "error"
                 );
+
             }
+
         }
     );
+
 }
 
 
@@ -1139,7 +1310,10 @@ if (previousButton) {
         "click",
         async () => {
 
-            if (!player) return;
+            if (!player) {
+                return;
+            }
+
 
             try {
 
@@ -1152,9 +1326,12 @@ if (previousButton) {
                     error.message,
                     "error"
                 );
+
             }
+
         }
     );
+
 }
 
 
@@ -1178,10 +1355,13 @@ if (volumeSlider) {
                 volumeValue.textContent =
                     volumeSlider.value +
                     "%";
+
             }
 
 
-            if (!player) return;
+            if (!player) {
+                return;
+            }
 
 
             try {
@@ -1197,9 +1377,12 @@ if (volumeSlider) {
                     error.message,
                     "error"
                 );
+
             }
+
         }
     );
+
 }
 
 
@@ -1213,31 +1396,13 @@ if (clearConsole) {
         "click",
         () => {
 
-            systemConsole.innerHTML = "";
+            if (systemConsole) {
+                systemConsole.innerHTML = "";
+            }
+
         }
     );
-}
 
-
-/* =========================================================
-   LIMPIAR SESIÓN ACTUAL
-========================================================= */
-
-function clearCurrentSession() {
-
-    accessToken = null;
-
-    sessionStorage.removeItem(
-        TOKEN_KEY
-    );
-
-    sessionStorage.removeItem(
-        EXPIRATION_KEY
-    );
-
-    sessionStorage.removeItem(
-        VERIFIER_KEY
-    );
 }
 
 
@@ -1246,21 +1411,58 @@ function clearCurrentSession() {
 ========================================================= */
 
 async function init() {
-    log("🔥 MOTIFY iniciado");
-    console.log("🎵 Scopes:", SCOPES);
 
-    const params = new URLSearchParams(window.location.search);
+    log("🔥 MOTIFY iniciado");
+
+    console.log(
+        "🎵 Scopes:",
+        SCOPES
+    );
+
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+
+    /*
+       Si Spotify acaba de devolver
+       ?code=...
+       procesamos la autorización.
+    */
 
     if (params.has("code")) {
+
         await handleSpotifyCallback();
+
         return;
     }
 
-    // No reutilizar automáticamente una sesión anterior
-    sessionStorage.removeItem("motify_access_token");
-    sessionStorage.removeItem("motify_token_expiration");
 
-    log("⚪ Esperando conexión con Spotify...");
+    /*
+       IMPORTANTE:
+
+       NO usamos un token anterior
+       automáticamente.
+
+       Esto hace que MOTIFY sea más
+       portátil entre computadores.
+    */
+
+    clearSpotifySession();
+
+
+    log(
+        "⚪ Esperando conexión con Spotify..."
+    );
+
 }
+
+
+/* =========================================================
+   ARRANCAR MOTIFY
+========================================================= */
+
 init();
 ```
