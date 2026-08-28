@@ -1,4 +1,3 @@
-```javascript
 /* =========================================================
    MOTIFY
    Spotify Web Playback Controller
