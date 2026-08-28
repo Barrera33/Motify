@@ -8,7 +8,7 @@
 ========================================================= */
 
 const CLIENT_ID = "c855b0a480d74d278a35821ad46ed5c8";
-const REDIRECT_URI = "http://127.0.0.1:5500";
+const REDIRECT_URI = "https://barrera33.github.io/Motify/";
 const SCOPES = [
     "streaming",
     "user-read-email",
