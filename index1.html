@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOTIFY</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Spotify SDK Ready -->
+    <script>
+        window.onSpotifyWebPlaybackSDKReady = function () {
+            console.log("🎵 Spotify SDK READY");
+            window.spotifySDKReady = true;
+            if (typeof initializeSpotifyPlayer === "function") {
+                initializeSpotifyPlayer();
+            }
+        };
+    </script>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+</head>
+<body>
+
+    <div class="background"></div>
+
+    <main class="app">
+
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-icon">M</div>
+                <div class="brand-text">
+                    <h1>MOTIFY</h1>
+                    <span>CONTROL MUSIC WITH MOTION</span>
+                </div>
+            </div>
+            <div id="connectionStatus" class="status disconnected">
+                <span class="status-dot"></span>
+                DESCONECTADO
+            </div>
+        </header>
+
+        <!-- Login Section -->
+        <section id="loginSection" class="login-card">
+            <div class="music-icon">♫</div>
+            <h2>Conecta tu Spotify</h2>
+            <p>Conecta Spotify Premium para utilizar MOTIFY como reproductor.</p>
+            <button id="connectSpotify" class="primary-button">
+                <span class="button-icon">🎵</span>
+                CONECTAR CON SPOTIFY
+            </button>
+        </section>
+
+        <!-- Player Section -->
+        <section id="playerSection" class="hidden">
+
+            <!-- Device Card -->
+            <div class="device-card card">
+                <div class="device-header">
+                    <div>
+                        <span class="small-title">SPOTIFY CONNECT DEVICE</span>
+                        <h2>🎧 MOTIFY</h2>
+                    </div>
+                    <div id="playerReady" class="ready-badge">WAITING</div>
+                </div>
+
+                <div class="device-info">
+                    <div class="info-box">
+                        <span>DEVICE ID</span>
+                        <code id="deviceId">Esperando MOTIFY...</code>
+                    </div>
+                    <div class="info-box">
+                        <span>ESTADO</span>
+                        <strong id="deviceState">Inicializando...</strong>
+                    </div>
+                </div>
+
+                <button id="transferButton" class="transfer-button" disabled>
+                    🚀 TRANSFERIR A MOTIFY
+                </button>
+                <p id="transferMessage" class="message">Esperando que MOTIFY esté listo...</p>
+            </div>
+
+            <!-- Track Card -->
+            <div class="track-card card">
+                <div id="albumCover" class="album-cover">🎵</div>
+                <div class="track-info">
+                    <span>REPRODUCIENDO</span>
+                    <h2 id="trackName">Ninguna canción</h2>
+                    <p id="artistName">Abre Spotify y reproduce una canción</p>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls-card card">
+                <button id="previousButton" class="control-button" aria-label="Anterior">⏮</button>
+                <button id="playButton" class="play-button" aria-label="Reproducir/Pausar">▶</button>
+                <button id="nextButton" class="control-button" aria-label="Siguiente">⏭</button>
+            </div>
+
+            <!-- Volume -->
+            <div class="volume-card card">
+                <span class="volume-icon">🔊</span>
+                <input id="volumeSlider" type="range" min="0" max="100" value="50">
+                <span id="volumeValue" class="volume-value">50%</span>
+            </div>
+
+            <!-- Console -->
+            <div class="console-card card">
+                <div class="console-header">
+                    <span>⚡ MOTIFY SYSTEM</span>
+                    <button id="clearConsole">LIMPIAR</button>
+                </div>
+                <div id="systemConsole">
+                    <p>🔥 MOTIFY iniciado</p>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
