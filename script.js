@@ -1,4 +1,4 @@
-```javascript
+   ```javascript
 /* =========================================================
    MOTIFY
    Spotify Web Playback Controller
@@ -208,13 +208,14 @@ async function startSpotifyLogin() {
         sessionStorage.setItem(VERIFIER_KEY, verifier);
 
         const params = new URLSearchParams({
-            response_type: "code",
-            client_id: CLIENT_ID,
-            scope: SCOPES,
-            redirect_uri: REDIRECT_URI,
-            code_challenge_method: "S256",
-            code_challenge: challenge
-        });
+             response_type: "code",
+             client_id: CLIENT_ID,
+             scope: SCOPES,
+             redirect_uri: REDIRECT_URI,
+             code_challenge_method: "S256",
+             code_challenge: challenge,
+             show_dialog: "true"
+         });
 
         const authURL =
             "https://accounts.spotify.com/authorize?" +
@@ -1293,65 +1294,12 @@ async function init() {
        SESIÓN GUARDADA
     ================================================= */
 
-    const savedToken =
-        sessionStorage.getItem(
-            TOKEN_KEY
-        );
+    // No reutilizar automáticamente una sesión anterior.
+// El usuario debe pulsar "CONECTAR CON SPOTIFY".
+sessionStorage.removeItem("motify_access_token");
+sessionStorage.removeItem("motify_token_expiration");
 
-
-    const expiration =
-        Number(
-            sessionStorage.getItem(
-                EXPIRATION_KEY
-            ) || 0
-        );
-
-
-    if (
-        savedToken &&
-        expiration > Date.now()
-    ) {
-
-        accessToken =
-            savedToken;
-
-
-        log(
-            "🟢 Sesión de Spotify recuperada.",
-            "success"
-        );
-
-
-        showPlayer();
-
-        waitForSDK();
-
-        return;
-    }
-
-
-    /* ================================================
-       TOKEN VENCIDO
-    ================================================= */
-
-    if (
-        savedToken &&
-        expiration <= Date.now()
-    ) {
-
-        log(
-            "🧹 Sesión anterior vencida. Limpiando..."
-        );
-
-        clearCurrentSession();
-    }
-
-
-    log(
-        "⚪ Esperando conexión con Spotify..."
-    );
-}
-
+log("⚪ Esperando conexión con Spotify...");
 
 /* =========================================================
    ARRANCAR
